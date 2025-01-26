@@ -46,7 +46,7 @@ export default function AddToBag({
   }, [cartDetails]);
 
   return (
-    <Button
+    <Button className="bg-blue-600 text-white py-6 px-6"
       onClick={() => {
         addItem(product), handleCartClick();
       }}

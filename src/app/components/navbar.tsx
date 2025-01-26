@@ -1,29 +1,64 @@
+
 "use client";
 
-import {  FaShoppingCart, FaUserCircle ,  FaHeart} from "react-icons/fa";
-import { useState, useEffect } from "react";
+import { FiSearch } from "react-icons/fi";
+import { FaShoppingCart, FaUserCircle } from "react-icons/fa";
+import { useState, useEffect, useRef } from "react";
 import { AiOutlineMenu } from "react-icons/ai";
 import { IoMdClose } from "react-icons/io";
 import Link from "next/link";
 import { useShoppingCart } from "use-shopping-cart";
 
+interface Product {
+  _id: string;
+  name: string;
+  image: string;
+  price: number;
+}
+
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [showSearchBar, setShowSearchBar] = useState(false); // State to toggle search bar visibility
+  const searchRef = useRef<HTMLDivElement | null>(null); // Ref to track the search bar container
+
+  const { cartDetails, handleCartClick } = useShoppingCart();
+
+  // Calculate the total number of items in the cart
+  const totalItems = Object.values(cartDetails || {}).reduce(
+    (sum, item) => sum + item.quantity,
+    0
+  );
 
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (menuOpen && !target.closest(".mobile-menu") && !target.closest(".menu-toggle")) {
-        setMenuOpen(false);
+      if (
+        showSearchBar &&
+        searchRef.current &&
+        !searchRef.current.contains(target) &&
+        !target.closest(".menu-toggle")
+      ) {
+        setShowSearchBar(false); // Hide search bar if clicked outside
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [menuOpen]);
+  }, [showSearchBar]);
 
-  const { handleCartClick } = useShoppingCart();
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    // Redirect to the search results page
+    window.location.href = `/search?q=${encodeURIComponent(searchQuery)}`;
+  };
 
   return (
     <div className="shadow-sm relative">
@@ -35,11 +70,36 @@ export default function Navbar() {
         </h1>
 
         {/* Right: Icons and Hamburger Menu for Small Screens */}
-        <div className="sm:hidden flex items-center space-x-4">
-          <button 
-           onClick={() => handleCartClick()}
+        <div className="flex items-center gap-2 md:hidden">
+          <button
+            className="relative"
+            onClick={() => setShowSearchBar((prev) => !prev)} // Toggle search bar visibility on mobile
           >
-           <FaShoppingCart className="text-blue-500 text-lg cursor-pointer" />
+            <FiSearch className="text-lg cursor-pointer text-blue-500" />
+          </button>
+          {showSearchBar && (
+            <div ref={searchRef} className="absolute top-0 right-0 w-full bg-white p-2 shadow-md">
+              <form onSubmit={handleSearch}>
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#23A6F0]"
+                />
+                <button type="submit" className="absolute right-2 top-1.5">
+                  <FiSearch className="text-lg cursor-pointer " />
+                </button>
+              </form>
+            </div>
+          )}
+          <button onClick={() => handleCartClick()} className="relative">
+            <FaShoppingCart className="text-blue-500 text-lg cursor-pointer" />
+            {totalItems > 0 && (
+              <span className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
+                {totalItems}
+              </span>
+            )}
           </button>
           <AiOutlineMenu
             role="button"
@@ -48,9 +108,6 @@ export default function Navbar() {
             className="text-blue-500 text-2xl cursor-pointer menu-toggle"
             onClick={() => setMenuOpen((prev) => !prev)}
           />
-          {/* <button className="bg-red-900" >
-          <FaHeart />
-          </button> */}
         </div>
 
         {/* Right: Navigation Links, Cart, and User Icons for Larger Screens */}
@@ -77,15 +134,65 @@ export default function Navbar() {
               </Link>
             </li>
           </ul>
-          <button 
-          onClick={() => handleCartClick()}
-          >
-  <FaShoppingCart className="text-blue-500 text-lg cursor-pointer" />
-</button>
-<Link href="/signup">
-  <FaUserCircle className="text-blue-500 text-lg cursor-pointer" />
-</Link>
+          <button onClick={() => handleCartClick()} className="relative">
+            <FaShoppingCart className="text-blue-500 text-lg cursor-pointer" />
+            {totalItems > 0 && (
+              <span className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
+                {totalItems}
+              </span>
+            )}
+          </button>
+          <Link href="/signup">
+            <FaUserCircle className="text-blue-500 text-lg cursor-pointer" />
+          </Link>
 
+          {/* Search Bar for Large Screens */}
+          <div className="hidden lg:flex items-center gap-6 relative">
+            <form onSubmit={handleSearch} className="relative">
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#23A6F0]"
+              />
+              <button type="submit" className="absolute right-2 top-2">
+                <FiSearch className="text-lg cursor-pointer mt-1 text-blue-500" />
+              </button>
+            </form>
+            
+            {/* Cart item count next to the search icon */}
+            {totalItems > 0 && (
+              <span className="absolute -top-2 -right-12 bg-blue-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
+                {totalItems}
+              </span>
+            )}
+          </div>
+
+          {searchResults.length > 0 && (
+            <div className="absolute top-full left-0 w-full bg-white border border-gray-200 shadow-lg mt-2 rounded-md z-50">
+              <ul className="py-2">
+                {searchResults.map((product) => (
+                  <li key={product._id} className="px-4 py-2 hover:bg-gray-100">
+                    <Link
+                      href={`/products/${product._id}`}
+                      className="flex items-center gap-4"
+                    >
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-10 h-10 object-cover rounded"
+                      />
+                      <div>
+                        <p className="font-medium">{product.name}</p>
+                        <p className="text-sm text-gray-600">${product.price}</p>
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
 
@@ -117,64 +224,84 @@ export default function Navbar() {
               Contact
             </Link>
             <Link href="/productlisting" className="text-blue-500 hover:text-gray-900">
-             Products
+              Products
             </Link>
             <Link href="/signup" className="text-blue-500 hover:text-gray-900">
               Sign Up
             </Link>
-
-            {/* Bottom Navbar Items for Mobile */}
-            {/* <div className="flex flex-col space-y-2 pt-4">
-              <Link href="/plantpots" className="hover:text-gray-900 hover:underline">
-                Plant pots
-              </Link>
-              <Link href="/ceramics" className="hover:text-gray-900 hover:underline">
-                Ceramics
-              </Link>
-              <Link href="/tables" className="hover:text-gray-900 hover:underline">
-                Tables
-              </Link>
-              <Link href="/chairs" className="hover:text-gray-900 hover:underline">
-                Chairs
-              </Link>
-              <Link href="/crockery" className="hover:text-gray-900 hover:underline">
-                Crockery
-              </Link>
-              <Link href="/tableware" className="hover:text-gray-900 hover:underline">
-                Tableware
-              </Link>
-              <Link href="/cutlery" className="hover:text-gray-900 hover:underline">
-                Cutlery
-              </Link>
-            </div> */}
           </div>
         </div>
       )}
-
-      {/* Bottom Navbar for Larger Screens */}
-      {/* <div className="hidden sm:flex justify-center items-center space-x-8 py-3 text-sm text-gray-600">
-        <Link href="/plantpots" className="text-amber-400 hover:text-blue-900 hover:underline">
-          Plant pots
-        </Link>
-        <Link href="/ceramics" className="text-amber-400 hover:text-blue-900 hover:underline">
-          Ceramics
-        </Link>
-        <Link href="/tables" className="text-amber-400 hover:text-blue-900 hover:underline">
-          Tables
-        </Link>
-        <Link href="/chairs" className="text-amber-400 hover:text-blue-900 hover:underline">
-          Chairs
-        </Link>
-        <Link href="/crockery" className="text-amber-400 hover:text-blue-900hover:underline">
-          Crockery
-        </Link>
-        <Link href="/tableware" className="text-amber-400 hover:text-blue-900 hover:underline">
-          Tableware
-        </Link>
-        <Link href="/cutlery" className="text-amber-400 hover:text-blue-900 hover:underline">
-          Cutlery
-        </Link>
-      </div> */}
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//////////////////////////
+//  {/* Bottom Navbar Items for Mobile */}
+//  <div className="flex flex-col space-y-2 pt-4">
+//  <Link href="/plantpots" className="hover:text-gray-900 hover:underline">
+//    Plant pots
+//  </Link>
+//  <Link href="/ceramics" className="hover:text-gray-900 hover:underline">
+//    Ceramics
+//  </Link>
+//  <Link href="/tables" className="hover:text-gray-900 hover:underline">
+//    Tables
+//  </Link>
+//  <Link href="/chairs" className="hover:text-gray-900 hover:underline">
+//    Chairs
+//  </Link>
+//  <Link href="/crockery" className="hover:text-gray-900 hover:underline">
+//    Crockery
+//  </Link>
+//  <Link href="/tableware" className="hover:text-gray-900 hover:underline">
+//    Tableware
+//  </Link>
+//  <Link href="/cutlery" className="hover:text-gray-900 hover:underline">
+//    Cutlery
+//  </Link>
+// </div> 
+
+
+// {/* Bottom Navbar for Larger Screens */}
+// <div className="hidden sm:flex justify-center items-center space-x-8 py-3 text-sm text-gray-600">
+// <Link href="/plantpots" className="text-amber-400 hover:text-blue-900 hover:underline">
+// Plant pots
+// </Link>
+// <Link href="/ceramics" className="text-amber-400 hover:text-blue-900 hover:underline">
+// Ceramics
+// </Link>
+// <Link href="/tables" className="text-amber-400 hover:text-blue-900 hover:underline">
+// Tables
+// </Link>
+// <Link href="/chairs" className="text-amber-400 hover:text-blue-900 hover:underline">
+// Chairs
+// </Link>
+// <Link href="/crockery" className="text-amber-400 hover:text-blue-900hover:underline">
+// Crockery
+// </Link>
+// <Link href="/tableware" className="text-amber-400 hover:text-blue-900 hover:underline">
+// Tableware
+// </Link>
+// <Link href="/cutlery" className="text-amber-400 hover:text-blue-900 hover:underline">
+// Cutlery
+// </Link>
+// </div> 
+
